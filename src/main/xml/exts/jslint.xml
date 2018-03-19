@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-jslint" basedir=".">
+
+    <!--
+        Import default properties for this extension.
+    -->
+    <property file="${resourcedir}/extensions/jslint/jslint.properties" />
+
+    <!--
+        Import utilized extensions
+    -->
+    <import file="enabled.xml" />
+    <import file="availability.xml" />
+
+    <!--
+        Shortcut for the "jslint:jslint" target
+    -->
+    <target name="jslint" depends="jslint:jslint" />
+
+    <!--
+         Execute the jslint task only, if a javascript source directory is
+         available
+    -->
+    <target name="jslint:jslint"
+            depends="availability:js-srcdir-is-available"
+            if="availability:js-srcdir-is-available">
+        <common.enabled.antcall target="-jslint:jslint"
+                                property="jslint.enabled" />
+    </target>
+
+    <!--
+        Runs the jslint cli tool against the project source code.
+    -->
+    <target name="-jslint:jslint"
+            depends="-jslint:before~hook,
+                     -jslint:run,
+                     -jslint:after~hook" />
+
+    <target name="-jslint:run" depends="-jslint:install-or-upgrade">
+        <fileset dir="${commons.srcdir.js}" erroronmissingdir="true" id="jslint:files-to-scan-fileset">
+            <include name="**/*.js" />
+            <exclude name="${commons.vendordir.js}/**" />
+        </fileset>
+        <property name="jslint:files-to-scan" refid="jslint:files-to-scan-fileset" />
+
+        <commons.script language="javascript">
+            var before = project.getProperty( "jslint:files-to-scan" ),
+                base = project.getProperty( "commons.srcdir.js" ),
+                files = before.split( ";" );
+
+            
+            project.setProperty(
+                "jslint:files-to-scan-clean",
+                files.map( function( value ) {
+                    return '"' + base + '/' + value + '"';
+                } ).join( " " )
+            );
+        </commons.script>
+
+        <commons.rhino
+            failonerror="${jslint.fail.on.violation}"
+            output="${jslint.logfile}">
+            <arg line="-f ${jslint.jslint.js}" />
+            <arg line="-f ${jslint.options}" />
+            <arg line="${jslint.runner}" />
+            <arg line="${jslint:files-to-scan-clean}" />
+        </commons.rhino>
+    </target>
+
+    <target name="-jslint:install-or-upgrade"
+            depends="-jslint:is-installed,
+                     -jslint:install" />
+
+    <target name="-jslint:install" unless="-jslint:out-installed">
+        <get src="https://raw.github.com/douglascrockford/JSLint/master/jslint.js"
+             dest="${jslint.jslint.js}"/>
+    </target>
+
+    <target name="-jslint:is-installed">
+        <condition property="-jslint:out-installed">
+            <available file="${jslint.jslint.js}" />
+        </condition>
+    </target>
+
+    <extension-point name="-jslint:before~hook" />
+    <extension-point name="-jslint:after~hook" />
+
+    <!--
+         Hook jslint into the compile step to be executed before compilation if
+         enabled
+    -->
+    <target name="-jslint:compile-before~hooked"
+            depends="jslint:jslint"
+            extensionOf="-compile:before~hook" />
+
+</project>

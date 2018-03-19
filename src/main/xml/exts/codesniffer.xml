@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-codesniffer" basedir=".">
+
+    <!--
+        Import default properties for this extension.
+    -->
+    <property file="${resourcedir}/extensions/codesniffer/codesniffer.properties" />
+
+    <!--
+        Import utilized extensions
+    -->
+    <import file="enabled.xml" />
+    <import file="availability.xml" />
+
+    <property name="codesniffer:binary" value="${user.home}/.ant-build-commons/phar/codesniffer/${codesniffer.package.name}-${codesniffer.package.version}.phar" />
+
+    <!--
+        Shortcut for the "codesniffer:codesniffer" target
+    -->
+    <target name="codesniffer" depends="codesniffer:codesniffer" />
+
+    <!--
+         Public entrypoint.
+
+         Only run the codesniffer target, if phpsrc is available
+    -->
+    <target name="codesniffer:codesniffer"
+        depends="availability:php-srcdir-is-available"
+        if="availability:php-srcdir-is-available">
+        <common.enabled.antcall target="-codesniffer:codesniffer" 
+                                property="codesniffer.enabled" />
+    </target>
+
+    <!--
+        Runs the CodeSniffer cli tool against the project source code.
+    -->
+    <target name="-codesniffer:codesniffer"
+            depends="-codesniffer:before~hook,
+                     -codesniffer:run,
+                     -codesniffer:after~hook" />
+
+    <!--
+        This target runs CodeSniffer against the project's source code and
+        generates a log file "checkstyle.xml" in the configured ${commons:logsdir}.
+    -->
+    <target name="-codesniffer:run"
+            depends="-codesniffer:install-or-upgrade">
+
+        <tempfile property="-codesniffer:run-report-file"
+                  destdir="${commons:tmpdir}"
+                  deleteonexit="true" />
+
+        <exec executable="${commons.executable.php}" resultproperty="-codesniffer:run-exit-code">
+            <arg value="-d" />
+            <arg value="memory_limit=1024M" />
+            <arg value="${codesniffer:binary}" />
+            <arg value="--standard=${codesniffer.standard}" />
+            <arg value="--report=checkstyle" />
+            <arg value="--report-file=${commons:logsdir}/checkstyle.xml" />
+            <arg value="--report-full=${-codesniffer:run-report-file}" />
+            <arg value="${commons.srcdir.php}" />
+        </exec>
+
+        <loadfile property="-codesniffer:run-report-output" srcFile="${-codesniffer:run-report-file}" />
+        <fail message="CodeSniffer failed&#10;&#10;${-codesniffer:run-report-output}&#10;BUILD FAILED">
+            <condition>
+                <and>
+                    <istrue value="${codesniffer.fail.on.violation}" />
+                    <not>
+                        <equals arg1="0" arg2="${-codesniffer:run-exit-code}" />
+                    </not>
+                </and>
+            </condition>
+        </fail>
+
+    </target>
+
+    <!--
+        This target tries to a) install CodeSniffer if it isn't already installed
+        in the project's local installation or b) upgrade a previous
+        installed version of CodeSniffer.
+    -->
+    <target name="-codesniffer:install-or-upgrade"
+            depends="-codesniffer:install,
+                     -codesniffer:upgrade" />
+
+    <!--
+        This target tries to install the CodeSniffer package into the project's
+        installation, but it will not be executed if CodeSniffer is already
+        installed.
+    -->
+    <target name="-codesniffer:install" depends="-codesniffer:needs-installation" if="-codesniffer:needs.installation">
+
+        <mkdir dir="${user.home}/.ant-build-commons/phar/codesniffer" />
+
+        <get src="https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar"
+             dest="${codesniffer:binary}" />
+    </target>
+
+    <!--
+        This target tries to upgrade a previously installed CodeSniffer package.
+        This target will no be executed if CodeSniffer wasn't installed before.
+    -->
+    <target name="-codesniffer:upgrade" depends="-codesniffer:needs-upgrade" if="-codesniffer:needs.upgrade">
+
+        <mkdir dir="${user.home}/.ant-build-commons/phar/codesniffer" />
+
+        <get src="https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar"
+             dest="${codesniffer:binary}"
+             usetimestamp="true" />
+    </target>
+
+    <!--
+        Tests if the required codesniffer must be installed. This target will set the
+        property ${-codesniffer:needs.installation} to true if the version does not exist.
+
+        Defines:
+            ${-codesniffer:needs.installation} If phpunit is not installed locally.
+    -->
+    <target name="-codesniffer:needs-installation">
+        <condition property="-codesniffer:needs.installation">
+            <not>
+                <available file="${codesniffer:binary}" />
+            </not>
+        </condition>
+    </target>
+
+    <!--
+        Tests if the requested codesniffer version is latest. In that case we must
+        update the binary, otherwise we can keep the versioned binary file. This
+        target will the the property ${-codesniffer:needs.upgrade} to TRUE if this
+        project uses the latest codesniffer binary.
+
+        Defines:
+            ${-codesniffer:needs.upgrade} If we should update the phpunit binary.
+    -->
+    <target name="-codesniffer:needs-upgrade">
+        <condition property="-codesniffer:needs.upgrade">
+            <equals arg1="latest" arg2="${codesniffer.package.version}" />
+        </condition>
+    </target>
+
+    <!--
+        Extension point that can be used by a build file to add additional build
+        steps right before the build environment starts the CodeSniffer cli script.
+    -->
+    <extension-point name="-codesniffer:before~hook" />
+
+    <!--
+        Extension point that can be used by a build file to add additional build
+        steps after the build environment has complete the CodeSniffer analysis.
+    -->
+    <extension-point name="-codesniffer:after~hook" />
+
+    <!--
+        EXTENSION POINTS UTILIZED BY THIS MODULE
+    -->
+
+    <!--
+        This target will hook the the "codesniffer:codesniffer" target into the
+        main VERIFY build-step
+    -->
+    <target name="-codesniffer:verify:main~parallel~hooked"
+            depends="codesniffer:codesniffer"
+            extensionOf="-verify:main~parallel~hook" />
+
+</project>

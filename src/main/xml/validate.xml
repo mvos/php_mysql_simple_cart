@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-validate" basedir=".">
+
+    <!--
+        Import the previous build file.
+    -->
+    <import file="clean.xml" />
+
+    <!--
+        Shortcut for "validate:validate"
+    -->
+    <target name="validate"
+            depends="validate:validate"
+            description="->  Validates the project configuration." />
+
+    <!--
+        Main target of this build file.
+    -->
+    <target name="validate:validate"
+            depends="clean:clean,
+                     -validate:before~hook,
+                     -validate:main~hook,
+                     -validate:after~hook" />
+
+    <!--
+        Available extension points for this build step.
+    -->
+
+    <!--
+
+    -->
+    <extension-point name="-validate:before~hook" />
+
+    <!--
+        This hook represents the main validation process. It can be extended by
+        other modules or build files to perform some custom validation steps.
+    -->
+    <extension-point name="-validate:main~hook" />
+
+    <!--
+
+    -->
+    <extension-point name="-validate:after~hook" />
+
+</project>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-phpmd" basedir=".">
+
+    <!--
+        Import default properties for this extension.
+    -->
+    <property file="${resourcedir}/extensions/phpmd/phpmd.properties" />
+
+    <property name="phpmd:binary" value="${user.home}/.ant-build-commons/phar/phpmd/${phpmd.package.name}-${phpmd.package.version}.phar" />
+
+    <!--
+        Import utilized extensions
+    -->
+    <import file="enabled.xml" />
+    <import file="availability.xml" />
+
+    <!--
+        Shortcut for the "phpmd:phpmd" target
+    -->
+    <target name="phpmd" depends="phpmd:phpmd" />
+
+    <!--
+         Execute the phpmd task only, if a php source directory is available
+    -->
+    <target name="phpmd:phpmd"
+            depends="availability:php-srcdir-is-available"
+            if="availability:php-srcdir-is-available">
+        <common.enabled.antcall target="-phpmd:phpmd"
+                                property="phpmd.enabled" />
+    </target>
+
+    <!--
+        Runs the phpmd cli tool against the project source code.
+    -->
+    <target name="-phpmd:phpmd"
+            depends="-phpmd:before~hook,
+                     -phpmd:run,
+                     -phpmd:after~hook" />
+
+    <target name="-phpmd:run" depends="-phpmd:install-or-upgrade">
+
+        <exec executable="${commons.executable.php}" failonerror="${phpmd.fail.on.violation}">
+            <arg value="-d" />
+            <arg value="memory_limit=1024M" />
+            <arg value="${phpmd:binary}" />
+            <arg value="${commons.srcdir.php}" />
+            <arg value="xml" />
+            <arg value="${phpmd.rulesets}" />
+            <arg value="--reportfile" />
+            <arg value="${commons:logsdir}/pmd.xml" />
+        </exec>
+    </target>
+
+    <target name="-phpmd:install-or-upgrade"
+            depends="-phpmd:install,
+                     -phpmd:upgrade" />
+
+    <target name="-phpmd:install" depends="-phpmd:needs-installation" if="-phpmd:needs.installation">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/phpmd" />
+
+        <get src="https://${phpmd.package.channel}/php/${phpmd.package.version}/${phpmd.package.name}.phar"
+             dest="${phpmd:binary}" />
+    </target>
+
+    <target name="-phpmd:upgrade" depends="-phpmd:needs-upgrade" if="-phpmd:needs.upgrade">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/phpmd" />
+
+        <get src="https://${phpmd.package.channel}/php/${phpmd.package.version}/${phpmd.package.name}.phar"
+             dest="${phpmd:binary}"
+             usetimestamp="true" />
+    </target>
+
+    <!--
+        Tests if the required phpmd must be installed. This target will set the
+        property ${-phpmd:needs.installation} to true if the version does not exist.
+
+        Defines:
+            ${-phpmd:needs.installation} If phpunit is not installed locally.
+    -->
+    <target name="-phpmd:needs-installation">
+        <condition property="-phpmd:needs.installation">
+            <not>
+                <available file="${phpmd:binary}" />
+            </not>
+        </condition>
+    </target>
+
+    <!--
+        Tests if the requested phpmd version is latest. In that case we must
+        update the binary, otherwise we can keep the versioned binary file. This
+        target will the the property ${-phpmd:needs.upgrade} to TRUE if this
+        project uses the latest phpmd binary.
+
+        Defines:
+            ${-phpmd:needs.upgrade} If we should update the phpunit binary.
+    -->
+    <target name="-phpmd:needs-upgrade">
+        <condition property="-phpmd:needs.upgrade">
+            <equals arg1="latest" arg2="${phpmd.package.version}" />
+        </condition>
+    </target>
+
+    <extension-point name="-phpmd:before~hook" />
+    <extension-point name="-phpmd:after~hook" />
+
+    <!--
+        EXTENSION POINTS UTILIZED BY THIS MODULE
+    -->
+
+    <!--
+        This target will hook the the "phpmd:phpmd" target into the
+        main VERIFY build-step
+    -->
+    <target name="-phpmd:verify:main~hooked"
+            depends="phpmd:phpmd"
+            extensionOf="-verify:main~hook" />
+</project>

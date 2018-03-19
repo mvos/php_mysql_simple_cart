@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="ant-build-commons-compile">
+
+    <description>
+        This build file cpntains compile/lint specific targets for the project
+        source code.
+    </description>
+
+    <!--
+        Import the parent target file.
+    -->
+    <import file="initialize.xml" />
+
+    <!--
+        Import default settings for this build step.
+    -->
+    <property file="${resourcedir}/compile/compile.properties" />
+
+    <!--
+        Shortcut for compile:compile
+    -->
+    <target name="compile"
+            depends="compile:compile"
+            description="->  Performs a static syntax check of the project." />
+
+    <!--
+        Main public target of this build file.
+    -->
+    <target name="compile:compile"
+            depends="initialize,
+                     -compile:before~hook,
+                     -compile:main~hook,
+                     -compile:fail-build-on-compile-error,
+                     -compile:after~hook" />
+
+    <!--
+        Lets the build fail when a compilation error occurred.
+    -->
+    <target name="-compile:fail-build-on-compile-error"
+            if="commons:out-error">
+        <antcall target="commons:fail-build-on-error">
+            <param name="commons:in-error-result" value="${commons:out-error}" />
+        </antcall>
+    </target>
+
+    <!--
+        EXTENSION POINTS FOR THE COMPILE MODULE
+    -->
+
+    <!--
+        This extension point will be called before the source compile process
+        starts.
+    -->
+    <extension-point name="-compile:before~hook" />
+
+    <!--
+        This extension point will be called before during the main compile
+        phase. It is the right point to register all different kinds of compile
+        steps.
+    -->
+    <extension-point name="-compile:main~hook" />
+
+    <!--
+        This extension point will be called after the source compile process
+        has finished.
+    -->
+    <extension-point name="-compile:after~hook" />
+</project>

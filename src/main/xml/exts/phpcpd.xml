@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-phpcpd" basedir=".">
+
+    <!--
+        Import default properties for this extension.
+    -->
+    <property file="${resourcedir}/extensions/phpcpd/phpcpd.properties" />
+
+    <!--
+        Import utilized extensions
+    -->
+    <import file="enabled.xml" />
+    <import file="availability.xml" />
+
+    <property name="phpcpd:binary" value="${user.home}/.ant-build-commons/phar/phpcpd/${phpcpd.package.name}-${phpcpd.package.version}.phar" />
+
+    <!--
+        Shortcut for the "phpcpd:phpcpd" target
+    -->
+    <target name="phpcpd" depends="phpcpd:phpcpd" />
+
+    <!--
+         Execute the phpcpd task only, if a php source directory is available
+    -->
+    <target name="phpcpd:phpcpd"
+            depends="availability:php-srcdir-is-available"
+            if="availability:php-srcdir-is-available">
+        <common.enabled.antcall target="-phpcpd:phpcpd"
+                                property="phpcpd.enabled" />
+    </target>
+
+    <!--
+        Runs the PHPCPD cli tool against the project source code.
+    -->
+    <target name="-phpcpd:phpcpd"
+            depends="-phpcpd:before~hook,
+                     -phpcpd:run,
+                     -phpcpd:after~hook" />
+
+    <!--
+        This target runs PHPCPD against the project's source code and generates
+        a log file "cpd.xml" in the configured ${commons:logsdir}.
+    -->
+    <target name="-phpcpd:run" depends="-phpcpd:install-or-upgrade">
+
+        <exec executable="${commons.executable.php}" failonerror="${phpcpd.fail.on.violation}">
+            <arg value="-d" />
+            <arg value="memory_limit=1024M" />
+            <arg value="${phpcpd:binary}" />
+            <arg value="--log-pmd" />
+            <arg value="${commons:logsdir}/cpd.xml" />
+            <arg value="${commons.srcdir.php}" />
+        </exec>
+    </target>
+
+    <!--
+        This target tries to a) install PHPCPD if it isn't already installed
+        in the project's local installation or b) upgrade a previous
+        installed version of PHPCPD.
+    -->
+    <target name="-phpcpd:install-or-upgrade">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/phpcpd" />
+        <get src="https://phar.phpunit.de/phpcpd.phar" dest="${phpcpd:binary}" usetimestamp="true" />
+    </target>
+
+    <!--
+        Extension point that can be used by a build file to add additional build
+        steps right before the build environment starts the PHPCPD cli script.
+    -->
+    <extension-point name="-phpcpd:before~hook" />
+
+    <!--
+        Extension point that can be used by a build file to add additional build
+        steps after the build environment has complete the PHPCPD analysis.
+    -->
+    <extension-point name="-phpcpd:after~hook" />
+
+    <!--
+        EXTENSION POINTS UTILIZED BY THIS MODULE
+    -->
+
+    <!--
+        This target will hook the the "phpcpd:phpcpd" target into the
+        main VERIFY build-step
+    -->
+    <target name="-phpcpd:verify:main~parallel~hooked"
+            depends="phpcpd:phpcpd"
+            extensionOf="-verify:main~parallel~hook" />
+
+</project>

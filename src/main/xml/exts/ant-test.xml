@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-ant-test" basedir="." default="ant:test:help">
+
+    <tempfile property="ant:test:tempdir"
+              suffix="/test"
+              deleteonexit="true"
+              destdir="${commons:builddir}/ant-test" />
+
+    <property name="ant.test.srcdir" value="${commons.srcdir}/xml" />
+
+    <property name="ant.test.testdir" value="${commons.testdir}/xml" />
+
+    <!--
+
+    -->
+    <target name="ant:test:help">
+        <echo taskname="help">
+The ant:test extension can be used to test your own ant build
+files in a unified way with the Ant-Build-Commons framework.
+&#x00A0;
+changes:help
+  Displays the help text for the ant:test build extension.
+&#x00A0;
+ant:test
+  This build target will execute all available ant build file
+  tests for the current project.
+&#x00A0;
+ant:test:unit
+  This build target will execute all available unittests of the
+  ant build file tests available in the this project.
+&#x00A0;
+ant:test:regression
+  This build target will execute all available regression tests
+  of the ant build file tests available in the this project.
+&#x00A0;
+ant:test:integration
+  This build target will execute all available integration tests
+  of the ant build file tests available in the this project.
+        </echo>
+    </target>
+
+    <!--
+        Executes all
+    -->
+    <target name="ant:test"
+            if="-ant:test:out-test-dir-present"
+            depends="-ant:test:is-test-dir-present">
+
+        <subant target="">
+            <fileset dir="${ant.test.testdir}">
+                <include name="**/*.xml" />
+            </fileset>
+        </subant>
+    </target>
+
+    <!--
+        Executes all ant unit tests
+    -->
+    <target name="ant:test:unit"
+            if="-ant:test:out-test-dir-present"
+            depends="-ant:test:is-test-dir-present">
+
+        <subant target="">
+            <fileset dir="${ant.test.testdir}">
+                <include name="**/*-${test.type.unit}.xml" />
+            </fileset>
+        </subant>
+    </target>
+
+    <!--
+        Executes all ant integration tests
+    -->
+    <target name="ant:test:integration"
+            if="-ant:test:out-test-dir-present"
+            depends="-ant:test:is-test-dir-present">
+
+        <subant target="">
+            <fileset dir="${ant.test.testdir}">
+                <include name="**/*-${test.type.integration}.xml" />
+            </fileset>
+        </subant>
+    </target>
+
+    <!--
+        Executes all ant regression tests
+    -->
+    <target name="ant:test:regression"
+            if="-ant:test:out-test-dir-present"
+            depends="-ant:test:is-test-dir-present">
+
+        <subant target="">
+            <fileset dir="${ant.test.testdir}">
+                <include name="**/*-${test.type.regression}.xml" />
+            </fileset>
+        </subant>
+    </target>
+
+    <!--
+        Parameters:
+            ${ant:test:target}
+    -->
+    <target name="ant:test:run">
+        <antcall target="-ant:test:setUp" inheritall="false">
+            <param name="ant:test:tempdir" value="${ant:test:tempdir}" />
+        </antcall>
+        <antcall target="${ant:test:target}" inheritall="false">
+            <param name="ant:test:tempdir" value="${ant:test:tempdir}" />
+            <param name="basedir" value="${ant:test:tempdir}" />
+        </antcall>
+        <antcall target="-ant:test:tearDown" inheritall="false">
+            <param name="ant:test:tempdir" value="${ant:test:tempdir}" />
+        </antcall>
+    </target>
+
+    <!--
+        Tests if file ${expected} exists in the temporary test directory.
+
+        Parameters:
+            ${expected} Expected local file path.
+            ${message} The error message to show.
+    -->
+    <target name="ant:test:assertFileExists">
+        <property name="message" value="Cannot find file '${expected}' in '${ant:test:tempdir}'." />
+        <fail message="${message}">
+            <condition>
+                <not>
+                    <available file="${ant:test:tempdir}/${expected}" />
+                </not>
+            </condition>
+        </fail>
+    </target>
+
+    <!--
+        Creates a temporary environment
+    -->
+    <target name="-ant:test:setUp">
+        <mkdir dir="${ant:test:tempdir}" />
+    </target>
+
+    <!--
+        Removes the temporary environment.
+    -->
+    <target name="-ant:test:tearDown">
+        <delete dir="${ant:test:tempdir}/.." includeemptydirs="true" />
+    </target>
+
+    <!--
+        Tests if the configured test directory for ant tests exists. It will
+        set the property ${-ant:test:out-test-dir-present} to TRUE when it
+        exists.
+
+        Defines:
+            ${-ant:test:out-test-dir-present} If the ant test dir exists.
+    -->
+    <target name="-ant:test:is-test-dir-present">
+        <condition property="-ant:test:out-test-dir-present">
+            <available file="${ant.test.testdir}" />
+        </condition>
+    </target>
+
+    <!--
+        UTILIZED EXTENSION POINTS OF OTHER MODULES
+    -->
+
+    <target name="-ant:test:main~hooked"
+            depends="ant:test:unit"
+            extensionOf="-test:main~hook" />
+    
+</project>

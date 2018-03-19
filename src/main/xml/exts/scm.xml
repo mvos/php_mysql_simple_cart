@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-scm" basedir=".">
+
+    <description>
+        This build file contains all targets related to source control
+        management systems.
+    </description>
+
+    <!--
+        Import default settings
+    -->
+    <property file="${commons:resourcedir}/extensions/scm/scm.properties" />
+
+    <!--
+        Displays the help text for this
+    -->
+    <target name="scm:help">
+        <echo taskname="help">
+scm:commit
+  Will commit a specified file or directory to the configured version control
+  system.
+&#x00A0;
+scm:update
+  Updates the project's source code from the configured version control system
+  and all submodules.
+&#x00A0;
+scm:update-light
+  Updates the project's source code from the configured version control system
+  without it's submodules.
+&#x00A0;
+scm:tag
+  Creates a tag for the current project source. It will generate a tag label
+  in the following format:
+&#x00A0;
+      $${project.name}-$${project.version}build$${build.number}
+        </echo>
+    </target>
+
+    <!--
+        Will commit a specified file or directory to the configured version control
+        system. If the ${scm.resource} parameter is not specified this target will
+        commit all changes.
+
+        Parameters:
+            - ${scm.message}
+            - ${scm.resource}
+    -->
+    <target name="scm:commit" unless="commons:run-offline">
+
+        <property name="scm.resource" location="${basedir}" />
+
+        <antcall target="-scm:commit" />
+    </target>
+
+    <!--
+        Will commit a specified file or directory to the configured version control
+        system.
+
+        Parameters:
+            - ${scm.message}
+            - ${scm.resource}
+    -->
+    <target name="-scm:commit"
+            depends="-scm:commit-before~hook,
+                     -scm:commit~hook,
+                     -scm:commit-after~hook" />
+
+    <!--
+        Performs a full source update on the current base directory and all
+        dependencies.
+    -->
+    <target name="scm:update" unless="commons:run-offline">
+        <antcall target="-scm:update" />
+    </target>
+
+    <!--
+        Performs a full source update on the current base directory and all
+        dependencies.
+    -->
+    <target name="-scm:update" depends="-scm:update~hook" />
+
+    <!--
+        Performs a light update on the current base directory, but without any
+        dependencies.
+    -->
+    <target name="scm:update-light" unless="commons:run-offline">
+        <antcall target="-scm:update-light" />
+    </target>
+
+    <!--
+        Performs a light update on the current base directory, but without any
+        dependencies.
+    -->
+    <target name="-scm:update-light" depends="-scm:update-light~hook" />
+
+    <!--
+        Sets a tag for the current project configuration.
+
+        Parameters:
+            ${-scm:tag-label}
+            ${-scm:tag-commit-message}
+    -->
+    <target name="scm:tag"
+            depends="-scm:tag-commit-message,
+                     -scm:tag-label,
+                     -scm:tag~hook" />
+
+    <!--
+        Generates a default tag label, when it wasn't specified/defined earlier.
+    -->
+    <target name="-scm:tag-label" depends="initialize:initialize" unless="-scm:tag-label">
+        <property name="-scm:tag-label" value="${build.version}" />
+    </target>
+
+    <!--
+        Generates a default commit message for a new tag, when this property
+        wasn't specified/defined earlier.
+    -->
+    <target name="-scm:tag-commit-message"
+            depends="-scm:tag-label"
+            unless="-scm:tag-commit-message">
+
+        <property name="-scm:tag-commit-message"
+                  value="# Auto created tag '${-scm:tag-label}' after successful build." />
+    </target>
+
+    <!-- Extension points provided by this module -->
+
+    <!--
+        This hook will be called before a change will be committed.
+    -->
+    <extension-point name="-scm:commit-before~hook" />
+
+    <!--
+        Main commit hook, that can be used by concrete scm implementations.
+    -->
+    <extension-point name="-scm:commit~hook" />
+
+    <!--
+        This hook will be called after a change was committed.
+    -->
+    <extension-point name="-scm:commit-after~hook" />
+
+    <!--
+        Main update hook, that can be used by concrete scm implementations.
+    -->
+    <extension-point name="-scm:update~hook" />
+
+    <!--
+        Main update-light hook, that can be used by concrete scm implementations.
+    -->
+    <extension-point name="-scm:update-light~hook" />
+
+    <!--
+        Main tag hook, that can be used by concrete scm implementations.
+    -->
+    <extension-point name="-scm:tag~hook" />
+
+    <!--
+        Utilized extension points
+    -->
+
+    <!--
+        Hooks the full update procedure into the initialization step.
+    -->
+    <target name="-scm:initialize:after~hooked"
+            depends="scm:update"
+            extensionOf="-initialize:after~hook" />
+
+</project>

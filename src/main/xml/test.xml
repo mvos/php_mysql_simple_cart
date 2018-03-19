@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="ant-build-commons-test">
+
+    <description>
+        This is ant file contains targets that will execute the projects unit
+        tests.
+    </description>
+
+    <!--
+        Declare basedir for commons pear
+    -->
+    <dirname property="-test:basedir" file="${ant.file.ant-build-commons-test}" />
+
+    <!--
+        Import the parent target file.
+    -->
+    <import file="compile.xml" />
+
+    <!--
+        Import default properties for the test build step.
+    -->
+    <property file="${commons:resourcedir}/test/test.properties" />
+
+    <!--
+        Shortcut for the "test:test" target.
+    -->
+    <target name="test"
+            depends="test:test"
+            description="->  Runs the unit tests for the project." />
+
+    <!--
+        Runs the unit tests for the current project.
+    -->
+    <target name="test:test" depends="compile,
+                                      -test:test" />
+
+    <!--
+
+    -->
+    <target name="-test:test"
+            depends="-test:before~hook,
+                     -test:main~hook,
+                     -test:after~hook" />
+
+    <!--
+        Extension points provided by this module.
+    -->
+
+    <!--
+        Executes the project's unittests.
+    -->
+    <extension-point name="-test:main~hook" />
+
+    <!--
+        Hook target that will be called by the build framework before it starts
+        the project's unittests.
+    -->
+    <extension-point name="-test:before~hook" />
+
+    <!--
+        Hook target that will be called by the build framework after it has
+        executed the project's unittests.
+    -->
+    <extension-point name="-test:after~hook" />
+
+</project>

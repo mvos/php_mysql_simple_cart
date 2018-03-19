@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="ant-build-commons-verify" basedir="..">
+
+    <description>
+        This is ant file contains targets for different static analysis and
+        quality checks used for the project source.
+    </description>
+
+    <!--
+        Import the parent target file.
+    -->
+    <import file="integration-test.xml" />
+
+    <!--
+        Shortcut for "verify:verify"
+    -->
+    <target name="verify"
+            depends="verify:verify"
+            description="->  Verifies that the source is valid and meets quality criterias." />
+
+    <!--
+        Main target of this build file. Verifies that the source is valid and
+        meets quality criterias.
+    -->
+    <target name="verify:verify" depends="integration-test, -verify" />
+
+    <!--
+        Internal verify implementation that defines the main workflow of the
+        verify target.
+    -->
+    <target name="-verify"
+            depends="-verify:before~hook,
+                     -verify:main~hook:execute,
+                     -verify:after~hook" />
+
+    <!--
+        This target calls all hooked verify targets in parallel.
+    -->
+    <target name="-verify:main~hook:execute">
+        <parallel>
+            <commons.parallel.extension-point target="-verify:main~parallel~hook" />
+            <sequential>
+                <antcall target="-verify:main~hook" />
+            </sequential>
+        </parallel>
+        
+        <fail message="At least one build step in verify:verify has failed.">
+            <condition>
+                <istrue value="${commons.scriptdef.failed}" />
+            </condition>
+        </fail>
+    </target>
+
+    <!--
+        Hook target that will be called before the main verification phase
+        of the project's source starts.
+    -->
+    <extension-point name="-verify:before~hook" />
+
+    <!--
+         Main extension point for this module. Every verfiy extension should
+         register itself to this hook. The extensions registered at this hook
+         will be executed in parallel.
+    -->
+    <extension-point name="-verify:main~parallel~hook" />
+
+    <!--
+         Sequential main extension point for this module. Verify tasks, which
+         know they are quite resource intensive, should be registered here
+         instead of the parallel hook.
+    -->
+    <extension-point name="-verify:main~hook" />
+
+    <!--
+        Hook target that will be called after the main verification phase
+        of the project's source has finished.
+    -->
+    <extension-point name="-verify:after~hook" />
+
+    <!--
+        Backdoor that allows execution of the verify step without the complete
+        build pipeline.
+    -->
+    <target name="verify:backdoor" depends="-verify:main~hook:execute" />
+
+</project>

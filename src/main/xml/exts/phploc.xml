@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    This build file contains all targets for the phploc extension package. So
+    that you can use phploc without any trouble in your project.
+-->
+<project name="ant-build-commons-extensions-phploc" basedir=".">
+
+    <!--
+        Import default properties for this extension.
+    -->
+    <property file="${resourcedir}/extensions/phploc/phploc.properties" />
+
+    <!--
+        Import utilized extensions
+    -->
+    <import file="enabled.xml" />
+    <import file="availability.xml" />
+
+    <property name="phploc:binary" value="${user.home}/.ant-build-commons/phar/phploc/${phploc.package.name}-${phploc.package.version}.phar" />
+
+    <!--
+        Shortcut for the "phploc:phploc" target
+    -->
+    <target name="phploc" depends="phploc:phploc" />
+
+    <!--
+         Execute the phploc task only, if a php source directory is available
+    -->
+    <target name="phploc:phploc"
+            depends="availability:php-srcdir-is-available"
+            if="availability:php-srcdir-is-available">
+        <common.enabled.antcall target="-phploc:phploc" 
+                                property="phploc.enabled"/>
+    </target>
+
+    <!--
+        Runs the phploc cli tool against the project source code.
+    -->
+    <target name="-phploc:phploc"
+            depends="-phploc:before~hook,
+                     -phploc:run,
+                     -phploc:after~hook" />
+
+    <target name="-phploc:run" depends="-phploc:install-or-upgrade">
+
+        <exec executable="${commons.executable.php}" failonerror="${phploc.fail.on.violation}">
+            <arg value="${phploc:binary}" />
+            <arg value="--log-xml" />
+            <arg value="${commons:logsdir}/phploc.xml" />
+            <arg value="--log-csv" />
+            <arg value="${commons:logsdir}/phploc.csv" />
+            <arg value="${commons.srcdir.php}" />
+        </exec>
+    </target>
+
+    <target name="-phploc:install-or-upgrade">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/phploc" />
+        <get src="https://phar.phpunit.de/phploc.phar" dest="${phploc:binary}" usetimestamp="true" />
+    </target>
+
+    <extension-point name="-phploc:before~hook" />
+    <extension-point name="-phploc:after~hook" />
+
+    <!--
+        EXTENSION POINTS UTILIZED BY THIS MODULE
+    -->
+
+    <!--
+        This target will hook the the "phploc:phploc" target into the
+        main VERIFY build-step
+    -->
+    <target name="-phploc:verify:main~parallel~hooked"
+            depends="phploc:phploc"
+            extensionOf="-verify:main~parallel~hook" />
+
+</project>

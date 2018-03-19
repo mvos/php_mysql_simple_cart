@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-scm-ext" basedir=".">
+
+    <description>
+        This build file contains all targets related to our custom source control
+        system format.
+    </description>
+
+    <!--
+        Import default settings
+    -->
+    <property file="${commons:resourcedir}/extensions/scm-ext/scm-ext.properties" />
+
+    <!--
+        Performs an update or full checkout of the project's sub modules
+    -->
+    <target name="scm:ext:update"
+            depends="-scm:ext:update-before~hook,
+                     -scm:ext:update,
+                     -scm:ext:update-after~hook"
+            extensionOf="-scm:update~hook" />
+
+    <!--
+        Performs an update or full checkout of the project's sub modules
+    -->
+    <target name="-scm:ext:update">
+        <exec executable="${commons.executable.php}" dir="${basedir}" failonerror="true">
+            <arg value="${scm-ext.executable}" />
+            <arg value="${scm-ext.path}" />
+        </exec>
+    </target>
+
+    <!--
+        Performs a light update of the project's sub modules
+    -->
+    <target name="scm:ext:update-light"
+            depends="-scm:ext:update-light-before~hook,
+                     -scm:ext:update-light,
+                     -scm:ext:update-light-after~hook"
+            extensionOf="-scm:update-light~hook" />
+    
+    <!--
+        Performs a light update of the project's sub modules
+    -->
+    <target name="-scm:ext:update-light">
+        <apply executable="${commons.executable.php}"
+               dir="${basedir}"
+               failonerror="true">
+            <arg value="${scm-ext.executable}" />
+            <arg value="${scm-ext.path}" />
+            
+            <fileset file="${scm-ext.path}">
+                <modified>
+                    <param name="cache.cachefile" value="${scm-ext.cachefile}" />
+                </modified>
+            </fileset>
+        </apply>
+    </target>
+
+    <!--
+        EXTENSION POINTS PROVIDED BY THIS EXTENSION
+    -->
+
+    <!--
+        Extension point that will be called before a module update will be executed
+    -->
+    <extension-point name="-scm:ext:update-before~hook" />
+
+    <!--
+        Extension point that will be called after a module update was executed.
+    -->
+    <extension-point name="-scm:ext:update-after~hook" />
+
+    <extension-point name="-scm:ext:update-light-before~hook" />
+
+    <extension-point name="-scm:ext:update-light-after~hook" />
+
+</project>

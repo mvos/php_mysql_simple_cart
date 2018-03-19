@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-base" basedir="." default="verify">
+
+    <!--
+        Declare basedir for commons
+    -->
+    <dirname property="-commons:basedir" file="${ant.file.ant-build-commons-base}" />
+
+    <!--
+        Define the build commons base directory.
+    -->
+    <property name="commons:basedir" location="${-commons:basedir}/../../" />
+
+    <!--
+        Define the build commons main source directory.
+    -->
+    <property name="commons:sourcedir" location="${commons:basedir}/main/xml" />
+
+    <!--
+        Define the build commons resource directory
+    -->
+    <property name="commons:resourcedir" location="${commons:basedir}/main/resources" />
+
+    <!-- (DEPRECATED)
+        Define minimum set of required properties
+    -->
+    <property name="resourcedir" location="${commons:resourcedir}" />
+
+    <!--
+        Import optional global settings for the current build commons user.
+    -->
+    <property file="${user.home}/.ant-build-commons/global.properties" />
+
+    <!--
+         Import default configuration of enabled and disabled extensions.
+
+         You can easily change the default behaviour using your
+         build.progqperties file on a project basis.
+    -->
+    <property file="${commons:resourcedir}/defaults.properties" />
+
+    <!--
+        Import default properties. You should customize this properties in your
+        own build environment.
+    -->
+    <property file="${commons:resourcedir}/base.properties" />
+
+    <!--
+        Some common settings for all project.
+    -->
+    <property name="commons:builddir"  location="${commons.basedir}/${commons.builddir.name}" />
+    <property name="commons:distdir"   location="${commons:builddir}/${commons.distdir.name}" />
+    <property name="commons:logsdir"   location="${commons:builddir}/${commons.logsdir.name}" />
+    <property name="commons:bundledir" location="${commons:builddir}/${commons.bundledir.name}" />
+    <property name="commons:tmpdir"    location="${commons:builddir}/${commons.tempdir.name}" />
+
+    <!--
+         Load all commons base macros
+    -->
+    <import file="macros.xml" />
+
+    <!--
+         Load other build steps
+    -->
+    <import file="clean.xml" />
+    <import file="deploy.xml" />
+    <import file="profile.xml" />
+    <import file="project.xml" />
+    <import file="site.xml" />
+
+    <!--
+        Import commons build extensions
+    -->
+    <import>
+        <fileset dir="${-commons:basedir}/exts" includes="*.xml" />
+    </import>
+
+    <!--
+        Common build variables
+    -->
+    <tstamp>
+        <format property="build.date" pattern="yyyy-MM-dd" />
+    </tstamp>
+
+    <!--
+        Alias target for commons:help
+    -->
+    <target name="help" depends="commons:help" />
+
+    <!--
+        Display some general help about the build commons project.
+    -->
+    <target name="commons:help">
+        <echo taskname="commons:help">
+Command line switches:
+&#x00A0;
+The build commons environment provides some global command line
+switches that can be passed as additional ant parameters.
+&#x00A0;
+  ~ $$ ant -Dparam1=foo -Dparam2=bar
+&#x00A0;
+Currently the following command line switches are available:
+&#x00A0;
+-Drelease=[true|false]
+  If this parameter is set to TRUE the build commons project
+  will create a release version of the project, instead of a
+  timestamped development build. By default this parameter is
+  set to FALSE, so that the build commons framework will create
+  development builds.
+&#x00A0;
+-Doffline=[true|false]
+  If this parameter is set to TRUE all modules that normally
+  require network access should work without their network
+  related tasks or they should simply skip processing.
+        </echo>
+    </target>
+
+    <!--
+        Target that let's the current build fail when the error result property.
+
+        Parameters:
+            ${commons:in-error-result} Any error message or an empty string.
+    -->
+    <target name="commons:fail-build-on-error"
+            depends="-commons:is-error-property-set-failed,
+                     -commons:fail-build-on-error" />
+
+    <!--
+        This target tests if the ${commons:in-error-result} is set and not equal
+        if both conditions are TRUE this target defines the ${-commons:out-is-error}
+        property to indicate a build error.
+
+        Parameters:
+            ${commons:in-error-result} Any error message or an empty string.
+
+        Defines:
+            ${-commons:out-is-error} Boolean flag that indicates a build error.
+    -->
+    <target name="-commons:is-error-property-set-failed">
+        <condition property="-commons:out-is-error">
+            <and>
+                <not>
+                    <equals arg1="${commons:in-error-result}" arg2="" trim="true" />
+                </not>
+                <not>
+                    <equals arg1="${commons:in-error-result}" arg2="$${commons:in-error-result}" trim="true" />
+                </not>
+            </and>
+        </condition>
+    </target>
+
+    <!--
+        This target let's the build fail when the ${-commons:out-is-error}
+         property is set.
+    -->
+    <target name="-commons:fail-build-on-error" if="-commons:out-is-error">
+        <!-- Call extension point -->
+        <antcall target="-commons:fail-build-on-error-before~hook" />
+
+        <!-- Fail build with error message -->
+        <fail message="ERROR: ${commons:in-error-result}" />
+    </target>
+
+    <!--
+        Tests if the project build should run offline. To force an offline build
+        you can supply the ${offline} property with "true", "on" or "1" to the
+        ant command line:
+
+        ~ $ ant verify -Doffline=1
+        ~ $ ant verify -Doffline=on
+        ~ $ ant verify -Doffline=true
+    -->
+    <target name="-commons:is-offline-mode">
+        <condition property="commons:run-offline">
+            <or>
+                <equals arg1="${offline}" arg2="1" trim="true" />
+                <equals arg1="${offline}" arg2="on" trim="true" />
+                <equals arg1="${offline}" arg2="true" trim="true" />
+            </or>
+        </condition>
+    </target>
+
+    <!--
+        EXTENSION POINTS UTILIZED BY THE BASE MODULE
+    -->
+
+    <!--
+        Hooks right before the validate step.
+    -->
+    <target name="-commons:validate:before~hooked"
+            depends="-commons:is-offline-mode"
+            extensionOf="-validate:before~hook" />
+
+    <!--
+        EXTENSION POINTS DEFINED BY THE BASE MODULE
+    -->
+
+    <!--
+        This extension point will be called right before the build will fail. It
+        can be used to clean up some resources before the build fails.
+    -->
+    <extension-point name="-commons:fail-build-on-error-before~hook" />
+
+</project>

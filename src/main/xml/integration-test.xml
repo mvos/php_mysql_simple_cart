@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="and-build-commons-integration-test" basedir=".">
+
+    <description>
+        This ant build file contains targets that are used to perform
+        integration tests against the project's source code.
+    </description>
+
+    <!--
+        Import the previous target file.
+    -->
+    <import file="package.xml" />
+
+    <!--
+        Shortcut for the "integration-test:integration-test" target.
+    -->
+    <target name="integration-test"
+            depends="integration-test:integration-test"
+            description="->  Runs all tests for the project." />
+
+    <!--
+        Runs the project's integration tests against different project build
+        artifacts.
+    -->
+    <target name="integration-test:integration-test"
+            depends="package,
+                     -integration-test:before~hook,
+                     -integration-test:source,
+                     -integration-test:phar,
+                     -integration-test:after~hook" />
+
+    <!--
+        Runs the project's integration tests against the current source checkout.
+    -->
+    <target name="-integration-test:source" depends="phpunit:integration" />
+
+    <!--
+        Runs the project's integration tests against a generated phar archive.
+    -->
+    <target name="-integration-test:phar"
+            if="-phar:enabled"
+            depends="-phar:is-enabled,
+                     -phar:define-archive-path">
+
+        <antcall target="phpunit:integration">
+            <param name="in.phpunit.include.path" location="${phar.archive.path}" />
+        </antcall>
+    </target>
+
+    <!--
+        EXTENSION POINTS DEFINED BY THIS BUILD MODULE.
+    -->
+
+    <extension-point name="-integration-test:before~hook" />
+
+    <extension-point name="-integration-test:after~hook" />
+
+</project>

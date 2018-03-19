@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-deploy" basedir=".">
+
+    <description>
+        This build file contains all those targets that are related to the
+        project's deploy process.
+    </description>
+
+    <!--
+        Import the parent target file.
+    -->
+    <import file="install.xml" />
+
+    <!--
+        Shortcut for "deploy:deploy"
+    -->
+    <target name="deploy"
+            depends="deploy:deploy"
+            description="->  Starts a remote deployment of the project build" />
+
+    <!--
+        Main target of this build file. Executes a remote deployment of a fresh
+        project build.
+    -->
+    <target name="deploy:deploy"
+            depends="install,
+                     -deploy:before~hook,
+                     -deploy:main~hook,
+                     -deploy:after~hook" />
+
+    <!--
+        Extension points provided by this module
+    -->
+
+    <!--
+        Hook target that will be called during the build process, just before
+        the main deploy target starts.
+    -->
+    <extension-point name="-deploy:before~hook" />
+
+    <!--
+        This extension point will be called during the main deploy phase,
+        Concrete deploy extensions can hook in here to deploy their project
+        artifacts.
+    -->
+    <extension-point name="-deploy:main~hook" />
+
+    <!--
+        Hook target that will be called during the build process, when the main
+        deploy target has finished.
+    -->
+    <extension-point name="-deploy:after~hook" />
+
+</project>

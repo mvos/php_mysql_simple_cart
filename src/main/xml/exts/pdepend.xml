@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-pdepend" basedir=".">
+
+    <!--
+        Import default properties for this extension.
+    -->
+    <property file="${resourcedir}/extensions/pdepend/pdepend.properties" />
+
+    <!--
+        Import utilized extensions
+    -->
+    <import file="enabled.xml" />
+    <import file="availability.xml" />
+
+    <property name="pdepend:binary" value="${user.home}/.ant-build-commons/phar/pdepend/${pdepend.package.name}-${pdepend.package.version}.phar" />
+
+    <!--
+        Shortcut for the "pdepend:pdepend" target
+    -->
+    <target name="pdepend" depends="pdepend:pdepend" />
+
+    <!--
+         Execute the pdepend task only, if a php source directory is available
+    -->
+    <target name="pdepend:pdepend"
+            depends="availability:php-srcdir-is-available"
+            if="availability:php-srcdir-is-available">
+        <common.enabled.antcall target="-pdepend:pdepend"
+                                property="pdepend.enabled" />
+    </target>
+
+    <!--
+        Runs the pdepend cli tool against the project source code.
+    -->
+    <target name="-pdepend:pdepend"
+            depends="-pdepend:before~hook,
+                     -pdepend:run,
+                     -pdepend:after~hook" />
+
+    <target name="-pdepend:run"
+            depends="-pdepend:install-or-upgrade,
+                     -pdepend:phpunit-log">
+
+        <exec executable="${commons.executable.php}" failonerror="${pdepend.fail.on.violation}">
+            <arg value="-d" />
+            <arg value="memory_limit=1024M" />
+            <arg value="${pdepend:binary}" />
+            <arg value="--summary-xml=${commons:logsdir}/${pdepend.summary.logfile}" />
+            <arg value="--jdepend-xml=${commons:logsdir}/${pdepend.jdepend.logfile}" />
+            <arg line="${-pdepend:phpunit.log}" />
+            <arg value="${commons.srcdir.php}" />
+        </exec>
+    </target>
+
+    <!--
+        Tests if the deprecated phpunit compatible log file format is activated
+        and sets an internal property to a cli argument, so that PHP_Depend
+        generates that file.
+    -->
+    <target name="-pdepend:phpunit-log">
+        <condition property="-pdepend:phpunit.log"
+                   value=""
+                   else="'--phpunit-xml=${commons:logsdir}/${pdepend.phpunit.logfile}'">
+            <or>
+                <equals arg1="${pdepend.enable.phpunit.compatible.log}"
+                        arg2="$${pdepend.enable.phpunit.compatible.log}"
+                        trim="true" />
+                <isfalse value="${pdepend.enable.phpunit.compatible.log}" />
+            </or>
+        </condition>
+    </target>
+
+    <target name="-pdepend:install-or-upgrade"
+            depends="-pdepend:install,
+                     -pdepend:upgrade" />
+
+    <target name="-pdepend:install" depends="-pdepend:needs-installation" if="-pdepend:needs.installation">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/pdepend" />
+
+        <get src="https://${pdepend.package.channel}/php/${pdepend.package.version}/${pdepend.package.name}.phar"
+             dest="${pdepend:binary}" />
+    </target>
+
+    <target name="-pdepend:upgrade" depends="-pdepend:needs-upgrade" if="-pdepend:needs.upgrade">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/pdepend" />
+
+        <get src="https://${pdepend.package.channel}/php/${pdepend.package.version}/${pdepend.package.name}.phar"
+             dest="${pdepend:binary}"
+             usetimestamp="true" />
+    </target>
+
+    <!--
+        Tests if the required pdepend must be installed. This target will set the
+        property ${-pdepend:needs.installation} to true if the version does not exist.
+
+        Defines:
+            ${-pdepend:needs.installation} If phpunit is not installed locally.
+    -->
+    <target name="-pdepend:needs-installation">
+        <condition property="-pdepend:needs.installation">
+            <not>
+                <available file="${pdepend:binary}" />
+            </not>
+        </condition>
+    </target>
+
+    <!--
+        Tests if the requested pdepend version is latest. In that case we must
+        update the binary, otherwise we can keep the versioned binary file. This
+        target will the the property ${-pdepend:needs.upgrade} to TRUE if this
+        project uses the latest pdepend binary.
+
+        Defines:
+            ${-pdepend:needs.upgrade} If we should update the phpunit binary.
+    -->
+    <target name="-pdepend:needs-upgrade">
+        <condition property="-pdepend:needs.upgrade">
+            <equals arg1="latest" arg2="${pdepend.package.version}" />
+        </condition>
+    </target>
+
+    <extension-point name="-pdepend:before~hook" />
+    <extension-point name="-pdepend:after~hook" />
+
+    <!--
+        EXTENSION POINTS UTILIZED BY THIS MODULE
+    -->
+
+    <!--
+        This target will hook the the "pdepend:pdepend" target into the
+        main VERIFY build-step
+    -->
+    <target name="-pdepend:verify:main~hooked"
+            depends="pdepend:pdepend"
+            extensionOf="-verify:main~hook" />
+</project>

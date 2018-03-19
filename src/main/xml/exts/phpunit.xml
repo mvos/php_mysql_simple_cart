@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    This build file contains all targets for the PHPUnit extension package. So
+    that you can use PHPUnit without any trouble in your project.
+-->
+<project name="ant-build-commons-extensions-phpunit" basedir=".">
+
+    <!--
+        Import default properties for this extension.
+    -->
+    <property file="${resourcedir}/extensions/phpunit/phpunit.properties" />
+
+    <!--
+        Import utilized extensions
+    -->
+    <import file="enabled.xml" />
+    <import file="availability.xml" />
+
+    <!--
+        Shortcut for the "phpunit:phpunit" target.
+    -->
+    <target name="phpunit" depends="phpunit:phpunit" />
+
+    <!--
+        This target will run all tests for the current project.
+
+        Parameters:
+            ${in.phpunit.include.path} Optional include path that should be
+                                       passed to PHPUnit's -include-path cli
+                                       option.
+            ${in.phpunit.coverage}     Optional boolean flag that enables the
+                                       collection of code coverage data.
+            $in.phpunit.group}         Optional test group that should be used
+                                       to filter the executed tests.
+    -->
+    <target name="phpunit:phpunit"
+            depends="availability:php-testdir-is-available"
+            if="availability:php-testdir-is-available">
+        <common.enabled.antcall target="-phpunit:run" 
+                                property="phpunit.enabled">
+            <param name="in.phpunit.group"        value="${in.phpunit.group}" />
+            <param name="in.phpunit.coverage"     value="${in.phpunit.coverage}" />
+            <param name="in.phpunit.include.path" value="${in.phpunit.include.path}" />
+        </common.enabled.antcall>
+    </target>
+
+    <!--
+        This target runs all tests flagged with the @group annotation that
+        matches the value of the ${test.type.unit} property.
+
+        Parameters:
+            ${in.phpunit.include.path} Optional include path that should be
+                                       passed to PHPUnit's -include-path cli
+                                       option.
+            ${in.phpunit.coverage}     Optional boolean flag that enables the
+                                       collection of code coverage data.
+    -->
+    <target name="phpunit:unit"
+            depends="availability:php-testdir-is-available"
+            if="availability:php-testdir-is-available">
+        <common.enabled.antcall target="-phpunit:run" 
+                                property="phpunit.enabled">
+            <param name="in.phpunit.group"        value="${test.type.unit}" />
+            <param name="in.phpunit.coverage"     value="${in.phpunit.coverage}" />
+            <param name="in.phpunit.include.path" value="${in.phpunit.include.path}" />
+        </common.enabled.antcall>
+    </target>
+
+    <!--
+        This target runs all tests flagged with the @group annotation that
+        matches the value of the ${test.type.integration} property.
+
+        Parameters:
+            ${in.phpunit.include.path} Optional include path that should be
+                                       passed to PHPUnit's -include-path cli
+                                       option.
+            ${in.phpunit.coverage}     Optional boolean flag that enables the
+                                       collection of code coverage data.
+    -->
+    <target name="phpunit:integration"
+            depends="availability:php-testdir-is-available"
+            if="availability:php-testdir-is-available">
+        <common.enabled.antcall target="-phpunit:run" 
+                                property="phpunit.enabled">
+            <param name="in.phpunit.group"        value="${test.type.integration}" />
+            <param name="in.phpunit.coverage"     value="${in.phpunit.coverage}" />
+            <param name="in.phpunit.include.path" value="${in.phpunit.include.path}" />
+        </common.enabled.antcall>
+    </target>
+
+    <!--
+        This target runs all tests flagged with the @group annotation that
+        matches the value of the ${test.type.regression} property.
+
+        Parameters:
+            ${in.phpunit.include.path} Optional include path that should be
+                                       passed to PHPUnit's -include-path cli
+                                       option.
+            ${in.phpunit.coverage}     Optional boolean flag that enables the
+                                       collection of code coverage data.
+    -->
+    <target name="phpunit:regression"
+            depends="availability:php-testdir-is-available"
+            if="availability:php-testdir-is-available">
+        <common.enabled.antcall target="-phpunit:run" 
+                                property="phpunit.enabled">
+            <param name="in.phpunit.group"        value="${test.type.regression}" />
+            <param name="in.phpunit.coverage"     value="${in.phpunit.coverage}" />
+            <param name="in.phpunit.include.path" value="${in.phpunit.include.path}" />
+        </common.enabled.antcall>
+    </target>
+
+    <!--
+        This target executes the project's test suite and enables the collection
+        of code coverage information.
+
+        Parameters:
+            ${in.phpunit.include.path} Optional include path that should be
+                                       passed to PHPUnit's -include-path cli
+                                       option.
+            $in.phpunit.group}         Optional test group that should be used
+                                       to filter the executed tests.
+    -->
+    <target name="phpunit:coverage"
+            depends="availability:php-testdir-is-available"
+            if="availability:php-testdir-is-available">
+        <common.enabled.antcall target="-phpunit:run" 
+                                property="phpunit.enabled">
+            <param name="in.phpunit.coverage"     value="true" />
+            <param name="in.phpunit.group"        value="${in.phpunit.group}" />
+            <param name="in.phpunit.include.path" value="${in.phpunit.include.path}" />
+        </common.enabled.antcall>
+    </target>
+
+    <!--
+        This target first tries to upgrade an existing local installation
+        or install a clean phpunit if no such installation exists. Then it
+        delegates to one of the concrete run targets. Which target gets executed
+        depends on the ${phpunit.testsuite.file}, if it is set and then if the
+        the test file exists. Otherwise the tests will be executed against the
+        configured test directory.
+    -->
+    <target name="-phpunit:run"
+            depends="-phpunit:install-or-upgrade,
+                     -phpunit:run-testsuite,
+                     -phpunit:run-testdir,
+                     -phpunit:run-fail" />
+
+    <target name="-phpunit:run-testsuite"
+            if="-phpunit:out-testsuite-present"
+            depends="-phpunit:is-testsuite-present">
+
+        <condition property="phpunit.include.path" value="" else="--include-path '${in.phpunit.include.path}'">
+            <equals arg1="${in.phpunit.include.path}" arg2="$${in.phpunit.include.path}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.group" value="" else="--group '${in.phpunit.group}'">
+            <equals arg1="${in.phpunit.group}" arg2="$${in.phpunit.group}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.clover" value="" else="--coverage-clover '${commons:logsdir}/clover.xml'">
+            <equals arg1="${in.phpunit.coverage}" arg2="$${in.phpunit.coverage}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.html" value="" else="--coverage-html '${commons:builddir}/coverage'">
+            <equals arg1="${in.phpunit.coverage}" arg2="$${in.phpunit.coverage}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${basedir}/phpunit.xml">
+            <available file="${basedir}/phpunit.xml" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${commons.testdir.php}/phpunit.xml">
+            <available file="${commons.testdir.php}/phpunit.xml" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${basedir}/phpunit.xml.dist">
+            <available file="${basedir}/phpunit.xml.dist" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${commons.testdir.php}/phpunit.xml.dist">
+            <available file="${commons.testdir.php}/phpunit.xml.dist" />
+        </condition>
+
+        <condition property="phpunit.conf" value="--configuration '${phpunit.conf.file}'" else="">
+            <available file="${phpunit.conf.file}" />
+        </condition>
+
+        <exec executable="${commons.executable.php}"
+              failonerror="true"
+              dir="${basedir}">
+
+            <arg value="-d" />
+            <arg value="memory_limit=1024M" />
+            <arg value="-d" />
+            <arg value="include_path=." />
+            <arg value="${user.home}/.ant-build-commons/phar/phpunit/${phpunit.package.name}.phar" />
+            <arg value="--log-junit" />
+            <arg value="${commons:logsdir}/junit.xml" />
+            <arg line="${phpunit.include.path}" />
+            <arg line="${phpunit.group}" />
+            <arg line="${phpunit.html}" />
+            <arg line="${phpunit.clover}" />
+            <arg line="${phpunit.conf}" />
+            <arg value="${phpunit.testsuite.class}" />
+            <arg value="${commons.testdir.php}/${phpunit.testsuite.file}" />
+        </exec>
+
+        <copy todir="${commons:builddir}/coverage">
+            <fileset dir="${commons:logsdir}">
+                <include name="clover.xml" />
+            </fileset>
+        </copy>
+    </target>
+
+    <!--
+        This target tests if a concrete testsuite file is configured and present.
+        It will set the ${-phpunit:out-testsuite-present} property to TRUE if it
+        exists, otherwise this property will be set to FALSE.
+    -->
+    <target name="-phpunit:is-testsuite-present">
+        <condition property="-phpunit:out-testsuite-present">
+            <available file="${commons.testdir.php}/${phpunit.testsuite.file}" />
+        </condition>
+    </target>
+
+    <target name="-phpunit:run-testdir"
+            if="-phpunit:out-testdir-present"
+            depends="-phpunit:is-testdir-present">
+
+        <condition property="phpunit.include.path" value="" else="--include-path '${in.phpunit.include.path}'">
+            <equals arg1="${in.phpunit.include.path}" arg2="$${in.phpunit.include.path}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.group" value="" else="--group '${in.phpunit.group}'">
+            <equals arg1="${in.phpunit.group}" arg2="$${in.phpunit.group}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.clover" value="" else="--coverage-clover '${commons:logsdir}/clover.xml'">
+            <equals arg1="${in.phpunit.coverage}" arg2="$${in.phpunit.coverage}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.html" value="" else="--coverage-html '${commons:builddir}/coverage'">
+            <equals arg1="${in.phpunit.coverage}" arg2="$${in.phpunit.coverage}" trim="true" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${basedir}/phpunit.xml">
+            <available file="${basedir}/phpunit.xml" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${commons.testdir.php}/phpunit.xml">
+            <available file="${commons.testdir.php}/phpunit.xml" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${basedir}/phpunit.xml.dist">
+            <available file="${basedir}/phpunit.xml.dist" />
+        </condition>
+
+        <condition property="phpunit.conf.file" value="${commons.testdir.php}/phpunit.xml.dist">
+            <available file="${commons.testdir.php}/phpunit.xml.dist" />
+        </condition>
+
+        <condition property="phpunit.conf" value="--configuration '${phpunit.conf.file}'" else="">
+            <available file="${phpunit.conf.file}" />
+        </condition>
+
+        <condition property="phpunit.dir" value="${commons.testdir.php}" else="">
+            <or>
+                <equals arg1="${phpunit.conf}" arg2="" trim="true" />
+                <not>
+                    <resourcecontains resource="${phpunit.conf.file}" substring="&lt;testsuites&gt;" />
+                </not>
+            </or>
+        </condition>
+
+        <exec executable="${commons.executable.php}"
+              taskname="phpunit:run-testdir"
+              failonerror="true"
+              dir="${basedir}">
+
+            <arg value="-d" />
+            <arg value="memory_limit=1024M" />
+            <arg value="-d" />
+            <arg value="include_path=." />
+            <arg value="${user.home}/.ant-build-commons/phar/phpunit/${phpunit.package.name}.phar" />
+            <arg value="--log-junit" />
+            <arg value="${commons:logsdir}/junit.xml" />
+            <arg line="${phpunit.include.path}" />
+            <arg line="${phpunit.group}" />
+            <arg line="${phpunit.html}" />
+            <arg line="${phpunit.clover}" />
+            <arg line="${phpunit.conf}" />
+            <arg line="${phpunit.dir}" />
+        </exec>
+
+        <copy todir="${commons:builddir}/coverage">
+            <fileset dir="${commons:logsdir}">
+                <include name="clover.xml" />
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="-phpunit:is-testdir-present">
+        <condition property="-phpunit:out-testdir-present">
+            <and>
+                <equals arg1="${phpunit.testsuite.file}" arg2="$${phpunit.testsuite.file}" trim="true" />
+                <available file="${commons.testdir.php}" />
+            </and>
+        </condition>
+    </target>
+
+    <!--
+        This target will fail the build of the  ${phpunit.testsuite.file} is
+        defined, but the referenced directory does not exist.
+    -->
+    <target name="-phpunit:run-fail">
+        <fail message="Cannot locate tests for the given project">
+            <condition>
+                <and>
+                    <not>
+                        <equals arg1="${phpunit.testsuite.file}" arg2="$${phpunit.testsuite.file}" trim="true" />
+                    </not>
+                    <not>
+                        <available file="${commons.testdir.php}/${phpunit.testsuite.file}" />
+                    </not>
+                </and>
+
+            </condition>
+        </fail>
+    </target>
+
+    <!--
+        This target will install a local version of phpunit in the global binary
+        cache, so that we can use it in the project. If PHPUnit is
+        already installed, this target will perform an upgrade of the PHPUnit
+        package.
+    -->
+    <target name="-phpunit:install-or-upgrade"
+            depends="-phpunit:install,
+                     -phpunit:upgrade" />
+
+    <target name="-phpunit:install" depends="-phpunit:needs-installation" if="-phpunit:needs.installation">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/phpunit" />
+
+        <get src="https://${phpunit.package.channel}/${phpunit.package.name}.phar"
+             dest="${user.home}/.ant-build-commons/phar/phpunit/${phpunit.package.name}.phar" />
+    </target>
+
+    <target name="-phpunit:upgrade" depends="-phpunit:needs-upgrade" if="-phpunit:needs.upgrade">
+        <mkdir dir="${user.home}/.ant-build-commons/phar/phpunit" />
+
+        <get src="https://${phpunit.package.channel}/${phpunit.package.name}.phar"
+             dest="${user.home}/.ant-build-commons/phar/phpunit/${phpunit.package.name}.phar"
+             usetimestamp="true" />
+    </target>
+
+    <!--
+        Tests if the required phpunit must be installed. This target will set the
+        property ${-phpunit:needs.installation} to true if the version does not exist.
+
+        Defines:
+            ${-phpunit:needs.installation} If phpunit is not installed locally.
+    -->
+    <target name="-phpunit:needs-installation">
+        <condition property="-phpunit:needs.installation">
+            <not>
+                <available file="${user.home}/.ant-build-commons/phar/phpunit/${phpunit.package.name}.phar" />
+            </not>
+        </condition>
+    </target>
+
+    <!--
+        Tests if the requested phpunit version is latest. In that case we must
+        update the binary, otherwise we can keep the versioned binary file. This
+        target will the the property ${-phpunit:needs.upgrade} to TRUE if this
+        project uses the latest phpunit binary.
+
+        Defines:
+            ${-phpunit:needs.upgrade} If we should update the phpunit binary.
+    -->
+    <target name="-phpunit:needs-upgrade">
+        <condition property="-phpunit:needs.upgrade">
+            <equals arg1="phpunit" arg2="${phpunit.package.name}" />
+        </condition>
+    </target>
+
+    <!--
+        EXTENSION POINTS UTILIZED BY THIS MODULE
+    -->
+
+    <!--
+        This target will hook the the "phpunit:unit" target into the main TEST
+        build-step
+    -->
+    <target name="-phpunit:test:main~hooked"
+            depends="phpunit:unit"
+            extensionOf="-test:main~hook" />
+
+    <!--
+        This target will hook the the "phpunit:coverage" target into the main verify
+        build-step
+    -->
+    <target name="-phpunit:verify:main~parallel~hooked"
+            depends="phpunit:coverage"
+            extensionOf="-verify:main~parallel~hook" />
+
+</project>

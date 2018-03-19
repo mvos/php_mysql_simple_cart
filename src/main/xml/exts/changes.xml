@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-changes" basedir="." default="changes:help">
+
+    <description>
+        This file contains the changes build extension. This extension can be
+        used to generate several changelog related artifacts from a standard
+        xml file in maven's changes.xml format.
+    </description>
+
+    <!--
+        Import module specific default properties
+    -->
+    <property file="${resourcedir}/extensions/changes/changes.properties" />
+
+    <!--
+        Displays the help text for this build extension.
+    -->
+    <target name="changes:help">
+        <echo taskname="help">
+The changes extension provides a unified mechanism to generate
+project CHANGELOG files, release histories on your project site
+or the actual release note in your project's PEAR package
+manifest.
+&#x00A0;
+changes:help
+  Displays the help text for the changes build extension.
+&#x00A0;
+changes:log
+  Generates a CHANGELOG file from an existing xdocs/changes.xml
+  file.
+&#x00A0;
+changes:manifest
+  Generates the changelog section of a PEAR package manifest
+  based on the entries in the xdocs/changes.xml file.
+&#x00A0;
+    - $${manifest} Input/Output manifest file.
+&#x00A0;
+changes:site
+  Generates several files for the project's site from the
+  entries in the xdocs/changes.xml file.
+        </echo>
+    </target>
+
+    <!--
+        This target will generate the project's CHANGELOG file.
+    -->
+    <target name="changes:log"
+            depends="-changes:is-changes-xml-available"
+            if="-changes:out-changes-xml-available">
+
+        <dirname property="-changes:changelog.dirpath" file="${changes.log.filepath}" />
+
+        <xslt style="${changes.xsl.changelog}"
+              in="${changes.filepath}"
+              out="${changes.log.filepath}">
+            
+            <param name="changes.project.name" expression="${project.name}" />
+        </xslt>
+    </target>
+
+    <!--
+        Updates the changelog section of the given pear package manifest file.
+
+        Parameters:
+            ${manifest}
+    -->
+    <target name="changes:manifest"
+            depends="-changes:is-changes-xml-available"
+            if="-changes:out-changes-xml-available">
+
+        <tempfile property="-changes:manifest.tempfile" suffix=".xml" />
+
+        <xslt style="${changes.xsl.manifest}"
+              in="${pear.manifest.file}"
+              out="${-changes:manifest.tempfile}">
+
+            <param name="changes.file" expression="${changes.filepath}" />
+        </xslt>
+
+        <move file="${-changes:manifest.tempfile}" tofile="${pear.manifest.file}" />
+    </target>
+
+    <!--
+        This target generates the site release info, when the the current
+        project contains a changes.xml file.
+    -->
+    <target name="changes:site"
+            depends="-changes:is-changes-xml-available"
+            if="-changes:out-changes-xml-available">
+
+        <xslt basedir="${site.builddir}"
+              destdir="${site.builddir}"
+              style="${changes.xsl.site}"
+              in="${changes.filepath}"
+              out="${site.builddir}${changes.webdir}/parts/latest.rst"
+              includes="${changes.filename}">
+
+            <param name="changes.builddir"     expression="${site.builddir}" />
+            <param name="changes.webdir"       expression="${changes.webdir}" />
+            <param name="changes.scm.uri"      expression="http://${project.scm.uri}" />
+            <param name="changes.pear.uri"     expression="http://${project.pear.uri}" />
+            <param name="changes.static.uri"   expression="http://${project.static.uri}" />
+            <param name="changes.project.name" expression="${project.name}" />
+        </xslt>
+    </target>
+
+    <!--
+        Tests if the changes.xml file is present. If it exists this target will
+        set the ${-changes:out-changes-xml-available} property.
+
+        Defines:
+            ${-changes:out-changes-xml-available}
+    -->
+    <target name="-changes:is-changes-xml-available">
+        <condition property="-changes:out-changes-xml-available">
+            <available file="${changes.filepath}" />
+        </condition>
+    </target>
+
+    <!--
+        Utilized extension points of other build steps.
+    -->
+
+    <!--
+        This target hooks into the site generation process and creates the
+        release overview for this project based on the changes.xml file.
+    -->
+    <target name="-changes:site:content-copy-after~hooked"
+            depends="changes:site"
+            extensionOf="-site:content-copy-after~hook" />
+
+    <!--
+        This target hooks into the PEAR package generate target and generates
+        a CHANGELOG file.
+
+        Parameters:
+            ${package.pear.builddir}  Root directory with PEAR styled source
+    -->
+    <target name="-changes:package:pear:before~hooked"
+            extensionOf="-package:pear:before~hook">
+
+        <antcall target="changes:log" inheritAll="false">
+            <param name="changes.log.filepath" value="${package.pear.builddir}/${changes.log.filename}" />
+        </antcall>
+    </target>
+
+    <!--
+        This target hooks into the PEAR manifest generate target and creates a
+        changelog based on the changes.xml data
+
+        Parameters:
+            ${pear.manifest.file} The temporary pear package manifest.
+    -->
+    <target name="-changes:pear:manifest-after~hooked"
+            extensionOf="-pear:manifest-after~hook">
+
+        <antcall target="changes:manifest" inheritAll="false">
+            <param name="manifest" value="${pear.manifest.file}" />
+        </antcall>
+    </target>
+
+</project>

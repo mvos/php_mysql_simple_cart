@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-initialize" basedir=".">
+
+    <description>
+        This build file contains the initialization targets for the project
+        source code.
+    </description>
+
+    <!--
+        Declare basedir for commons
+    -->
+    <dirname property="-initialize:basedir" file="${ant.file.ant-build-commons-initialize}" />
+
+    <!--
+        Import the parent target file.
+    -->
+    <import file="validate.xml" />
+
+    <!--
+        Main public target of this build file.
+    -->
+    <target name="initialize"
+            depends="initialize:initialize"
+            description="->  Initializes the project build environment." />
+
+    <!--
+        Starts the projects initialization process.
+    -->
+    <target name="initialize:initialize"
+            depends="validate:validate,
+			         -initialize:before~hook,
+                     -initialize:initialize,
+                     -initialize:main~hook,
+                     -initialize:after~hook" />
+
+    <!--
+        Private main target of this build file. This target triggers all sub
+        targets required to initialze the build environment. This includes
+        required directories, properties etc.
+    -->
+    <target name="-initialize:initialize"
+            depends="-initialize:properties,
+                     -initialize:directories,
+                     -initialize:environment"/>
+
+    <!--
+        Initializes all properties required for a project build.
+    -->
+    <target name="-initialize:properties" depends="-initialize:properties-snapshot">
+        <property name="build.version" value="${project.version}" />
+
+        <property name="build.version.api" value="${project.version}" />
+        <property name="build.version.release" value="${project.version}" />
+
+        <property name="build.stability.api" value="${project.stability}" />
+        <property name="build.stability.release" value="${project.stability}" />
+
+        <property name="build.name" value="${project.name}" />
+        <property name="build.file" value="${build.name}-${build.version.release}" />
+    </target>
+
+    <!--
+        This target will set some build properties with snapshot related values
+        so that they are not set within the regular "-initialize:properties"
+        target.
+    -->
+    <target name="-initialize:properties-snapshot" unless="release">
+        <property name="build.version.release" value="${project.version}snapshot${DSTAMP}${TSTAMP}" />
+        <property name="build.stability.release" value="snapshot" />
+    </target>
+
+    <!--
+         Public entrypoint to create abc directory structure
+    -->
+    <target name="initialize:directories"
+            depends="-initialize:directories" />
+
+    <!--
+        Creates all directories required for a project build.
+    -->
+    <target name="-initialize:directories">
+        <!-- Initialize framework related directories -->
+        <mkdir taskname="initialize:directories" dir="${commons.metadata.cache.dir}" />
+
+        <mkdir taskname="initialize:directories" dir="${commons:builddir}" />
+        <mkdir taskname="initialize:directories" dir="${commons:tmpdir}" />
+        <mkdir taskname="initialize:directories" dir="${commons:distdir}" />
+        <mkdir taskname="initialize:directories" dir="${commons:bundledir}" />
+        <mkdir taskname="initialize:directories" dir="${commons:logsdir}" />
+        <mkdir taskname="initialize:directories" dir="${commons:builddir}/phpcb" />
+        <mkdir taskname="initialize:directories" dir="${commons:builddir}/coverage" />
+    </target>
+
+    <!--
+        Creates a temporary properties file with build environment specific
+        settings.
+
+        This target will define a property named ${commons:env.properties.file}
+        which contains all relevant settings for the current build environment.
+    -->
+    <target name="initialize:environment" depends="-initialize:environment" />
+
+   <!--
+        Creates a temporary properties file with build environment specific
+        settings.
+
+        This target will define a property named ${commons:env.properties.file}
+        which contains all relevant settings for the current build environment.
+    -->
+    <target name="-initialize:environment">
+
+        <tempfile property="commons:env.properties.file"
+                  destDir="${commons:builddir}"
+                  suffix=".properties"
+                  deleteonexit="true" />
+
+	    <mkdir taskname="initialize:environment"
+               dir="${commons:builddir}" />
+        <echoproperties destfile="${commons:env.properties.file}.temp"
+                        regex=".*\.${commons.env}\..*" />
+
+        <copy taskname="initialize:environment"
+              file="${commons:env.properties.file}.temp"
+              tofile="${commons:env.properties.file}">
+
+            <filterset begintoken="." endtoken=".">
+                <filter token="${commons.env}" value="." />
+            </filterset>
+        </copy>
+
+        <delete taskname="initialize:environment"
+                file="${commons:env.properties.file}.temp" />
+    </target>
+
+    <!--
+        Hook target that will be called before the initialization phase if the
+        build process starts.
+    -->
+    <extension-point name="-initialize:before~hook" />
+
+    <!--
+        Hook target that will be called as main initialization phase in the
+        build process.
+    -->
+    <extension-point name="-initialize:main~hook" />
+
+    <!--
+        Hook target that will be called after the initialization phase if the
+        build process has finished.
+    -->
+    <extension-point name="-initialize:after~hook" />
+
+</project>

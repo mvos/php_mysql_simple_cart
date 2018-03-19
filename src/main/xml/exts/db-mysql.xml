@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ant-build-commons-extensions-db-mysql" basedir=".">
+
+    <!--
+        Define classpath for the mysql extension
+    -->
+    <path id="-db:mysql:classpath">
+        <fileset dir="${resourcedir}/extensions">
+            <include name="db-mysql/mysql*.jar"/>
+        </fileset>
+    </path>
+
+    <!--
+        Initializes the project database if it does not exist.
+    -->
+    <target name="-db:mysql:initialize-database" depends="-db:mysql:is-enabled" if="-db:mysql:enabled">
+        <sql driver="${db.driver}"
+             url="jdbc:${db.system}://${db.hostname}"
+             userid="${db.userid}"
+			 password="${db.password}"
+			 taskname="db:mysql:initialize-database">
+
+            <classpath refid="-db:mysql:classpath" />
+            
+			<transaction>
+                CREATE DATABASE IF NOT EXISTS `${db.name}`;
+			</transaction>
+			<transaction>
+                USE `${db.name}`;
+			</transaction>
+        </sql>
+    </target>
+
+    <!--
+        Initializes the project database from a schema file
+    -->
+    <target name="-db:mysql:initialize-schema">
+        <sql driver="${db.driver}"
+             url="jdbc:${db.system}://${db.hostname}"
+             userid="${db.userid}"
+             password="${db.password}">
+
+            <classpath refid="-db:mysql:classpath" />
+
+			<transaction src="${db.schema.file}" />
+        </sql>
+    </target>
+
+    <!--
+        This target will drop the project's mysql database if the mysql extension
+        is enabled for this project.
+    -->
+    <target name="-db:mysql:drop" depends="-db:mysql:is-enabled" if="-db:mysql:enabled">
+        <sql driver="${db.driver}"
+             url="jdbc:${db.system}://${db.hostname}"
+             userid="${db.userid}"
+			 password="${db.password}"
+			 taskname="db:mysql:drop">
+
+            <classpath refid="-db:mysql:classpath" />
+
+			<transaction>
+                DROP DATABASE IF EXISTS `${db.name}`;
+			</transaction>
+        </sql>
+    </target>
+
+    <!--
+        Tests if the current system is configured for mysql.
+    -->
+    <target name="-db:mysql:is-enabled">
+        <condition property="-db:mysql:enabled">
+            <equals arg1="${db.system}" arg2="mysql" />
+        </condition>
+    </target>
+
+    <!--
+        Extension points utilized by this extension
+    -->
+
+    <!--
+        Hooks into the generic db:drop extension point and calls the mysql
+        related drop target in this file.
+    -->
+    <target name="-db:mysql:db-drop-main~hooked"
+            depends="-db:mysql:drop"
+            extensionOf="-db:drop-main~hook" />
+
+</project>
